@@ -1,33 +1,3 @@
---# WorkingCopy
-workingCopyKey = readLocalData("workingCopyKey", "")
-print ("Working Copy key", workingCopyKey)
-
-function saveToWorkingCopy()
-    --get project name
-    local projectName = urlencode(string.match(readProjectTab("Main"), "^%-%-%s(.-)\n") or "My Project")
-    --concatenate project tabs
-    local tabNames = listProjectTabs()
-    local tabString = ""
-    for i,v in ipairs(tabNames) do
-        tabString = tabString.."--# "..v.."\n"..readProjectTab(v).."\n\n"
-        print(i,v)
-    end
-   -- tabString = urlencode(tabString) --if passing code in URL
-    pasteboard.copy(tabString) --avoid encoding by placing code in pasteboard
-    openURL("working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo=Codea&filename="..projectName..".lua&uti=public.txt") --&repo=Codea &text="..tabString
-    print(projectName.." saved")
-end
-
-parameter.action("Save project to Working Copy", saveToWorkingCopy)
-
-function urlencode(str)
-    str = string.gsub (str, "\n", "\r\n")
-    str = string.gsub (str, "([^%w ])",
-    function (c) return string.format ("%%%02X", string.byte(c)) end)
-    str = string.gsub (str, " ", "%%20") --"+" 
-    return str
-end
-
 --# Main
 -- Working Copy
 --[[
@@ -58,4 +28,34 @@ end
   ]]
 
 
+
+--# WorkingCopy
+workingCopyKey = readLocalData("workingCopyKey", "")
+print ("Working Copy key", workingCopyKey)
+
+function saveToWorkingCopy()
+    --get project name
+    local projectName = urlencode(string.match(readProjectTab("Main"), "^%-%-%s(.-)\n") or "My Project")
+    --concatenate project tabs
+    local tabNames = listProjectTabs()
+    local tabString = ""
+    for i,v in ipairs(tabNames) do
+        tabString = tabString.."--# "..v.."\n"..readProjectTab(v).."\n\n"
+        print(i,v)
+    end
+   -- tabString = urlencode(tabString) --if passing code in URL
+    pasteboard.copy(tabString) --avoid encoding by placing code in pasteboard
+    openURL("working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo=Codea&filename="..projectName..".lua&uti=public.txt") --&repo=Codea &text="..tabString
+    print(projectName.." saved")
+end
+
+parameter.action("Save project to Working Copy", saveToWorkingCopy)
+
+function urlencode(str)
+    str = string.gsub (str, "\n", "\r\n")
+    str = string.gsub (str, "([^%w ])",
+    function (c) return string.format ("%%%02X", string.byte(c)) end)
+    str = string.gsub (str, " ", "%%20") --"+" 
+    return str
+end
 
