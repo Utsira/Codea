@@ -10,7 +10,7 @@ local function urlencode(str)
         function (c)
             return string.format ("%%%02X", string.byte(c))
         end)
-    str = string.gsub (str, " ", "%%20") --"+" 
+    str = string.gsub (str, " ", "%%20") -- %20 encoding, not + 
     return str
 end
 
