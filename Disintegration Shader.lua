@@ -72,6 +72,152 @@ end
 
 
 
+--# Helpers
+--helpers
+
+function vecRotMat(v, m)
+    return vec3(
+    m[1]*v.x + m[5]*v.y + m[9]*v.z,
+    m[2]*v.x + m[6]*v.y + m[10]*v.z,
+    m[3]*v.x + m[7]*v.y + m[11]*v.z)
+end
+
+function CalculateAverageNormals(vertices, invert)
+    local invert = invert or 1
+    --average normals at each vertex
+    --first get a list of unique vertices, concatenate the x,y,z values as a key
+    local norm,unique,col= {},{},{}
+    for i=1, #vertices do
+        unique[vertices[i].x ..vertices[i].y..vertices[i].z]=vec3(0,0,0)
+    end
+    --calculate normals, add them up for each vertex and keep count
+    for i=1, #vertices,3 do --calculate normal for each set of 3 vertices
+        local n = (vertices[i+1] - vertices[i]):cross(vertices[i+2] - vertices[i]) 
+        for j=0,2 do
+            local v=vertices[i+j].x ..vertices[i+j].y..vertices[i+j].z
+            unique[v]=unique[v]+n  
+        end
+    end
+    --calculate average for each unique vertex
+    for i=1,#unique do
+        unique[i] = unique[i]:normalize() * invert
+    end
+    --now apply averages to list of vertices
+    local rnd=math.random
+    local inc = 255/#vertices
+    for i=1, #vertices,3 do --calculate average
+        local n = (vertices[i+1] - vertices[i]):cross(vertices[i+2] - vertices[i]) 
+     --   local c = color(rnd(255),rnd(255),rnd(255))
+        local c = color(inc*i, 255-(inc*i), (128+(inc*i))%255)
+        for j=0,2 do
+            norm[i+j] = unique[vertices[i+j].x ..vertices[i+j].y..vertices[i+j].z]
+            col[i+j] = c
+        end
+    end
+    return norm, col
+end
+
+function CalculateNormals(vertices)
+    --this assumes flat surfaces, and hard edges between triangles
+    local norm, origin = {}, {}
+    for i=1, #vertices,3 do --calculate normal for each set of 3 vertices
+        local n = ((vertices[i+1] - vertices[i]):cross(vertices[i+2] - vertices[i])):normalize()
+      --  local n = ((vertices[i] + vertices[i+1] + vertices[i+2])/3):normalize()
+        norm[i] = n --then apply it to all 3
+        norm[i+1] = n
+        norm[i+2] = n
+        local o = (vertices[i] + vertices[i+1] + vertices[i+2])/3
+        origin[i] = o
+        origin[i+1] = o
+        origin[i+2] = o
+    end
+    return norm, origin
+end  
+
+function Isosphere(depth)
+    local s = s or 1 --scale
+    local t = (1 + math.sqrt(5)) / 2
+    --all the vertices of an icosohedron
+    local vertices = {
+            vec3(-1 , t, 0):normalize(),
+            vec3(1 , t, 0):normalize(),
+            vec3(-1 , -t, 0):normalize(),
+            vec3(1 , -t, 0):normalize(),
+            
+            vec3(0 , -1, t):normalize(),
+            vec3(0 , 1, t):normalize(),
+            vec3(0 , -1, -t):normalize(),
+            vec3(0 , 1, -t):normalize(),
+            
+            vec3(t , 0, -1):normalize(),
+            vec3(t , 0, 1):normalize(),
+            vec3(-t , 0, -1):normalize(),
+            vec3(-t , 0, 1):normalize() 
+        }
+    --20 faces
+    icovertices = {
+            -- 5 faces around point 0
+            vertices[1], vertices[12], vertices[6],
+            vertices[1], vertices[6], vertices[2],
+            vertices[1], vertices[2], vertices[8],
+            vertices[1], vertices[8], vertices[11],
+            vertices[1], vertices[11], vertices[12],
+            
+            -- 5 adjacent faces
+            vertices[2], vertices[6], vertices[10],
+            vertices[6], vertices[12], vertices[5],
+            vertices[12], vertices[11], vertices[3],
+            vertices[11], vertices[8], vertices[7],
+            vertices[8], vertices[2], vertices[9],
+            
+            -- 5 faces around point 3
+            vertices[4], vertices[10], vertices[5],
+            vertices[4], vertices[5], vertices[3],
+            vertices[4], vertices[3], vertices[7],
+            vertices[4], vertices[7], vertices[9],
+            vertices[4], vertices[9], vertices[10],
+            
+            --5 adjacent faces
+            vertices[5], vertices[10], vertices[6],
+            vertices[3], vertices[5], vertices[12],
+            vertices[7], vertices[3], vertices[11],
+            vertices[9], vertices[7], vertices[8],
+            vertices[10], vertices[9], vertices[2]
+        }
+    
+    local finalVertices = {}
+    --divide each triangle into 4 sub triangles to make an isosphere     
+    --this can be repeated (based on depth) for higher res spheres   
+    for j=1,depth do
+        for i=1,#icovertices/3 do
+            midpoint1 = ((icovertices[i*3-2] + icovertices[i*3-1])/2):normalize() 
+            midpoint2 = ((icovertices[i*3-1] + icovertices[i*3])/2):normalize() 
+            midpoint3 = ((icovertices[i*3] + icovertices[i*3-2])/2):normalize() 
+            --triangle 1
+            table.insert(finalVertices,icovertices[i*3-2] )
+            table.insert(finalVertices,midpoint1)
+            table.insert(finalVertices,midpoint3)
+            --triangle 2
+            table.insert(finalVertices,midpoint1)
+            table.insert(finalVertices,icovertices[i*3-1] )
+            table.insert(finalVertices,midpoint2)
+            --triangle 3
+            table.insert(finalVertices,midpoint2)
+            table.insert(finalVertices,icovertices[i*3] )
+            table.insert(finalVertices,midpoint3)
+            --triangle 4
+            table.insert(finalVertices,midpoint1)
+            table.insert(finalVertices,midpoint2)
+            table.insert(finalVertices,midpoint3) 
+        end
+        icovertices = finalVertices
+        finalVertices = {}
+    end
+   
+    print("icovertices="..#icovertices)
+    return icovertices
+end
+
 --# Explosion
 explode = {}
 
@@ -245,150 +391,4 @@ void main()
 ]]
 
 }
-
---# Helpers
---helpers
-
-function vecRotMat(v, m)
-    return vec3(
-    m[1]*v.x + m[5]*v.y + m[9]*v.z,
-    m[2]*v.x + m[6]*v.y + m[10]*v.z,
-    m[3]*v.x + m[7]*v.y + m[11]*v.z)
-end
-
-function CalculateAverageNormals(vertices, invert)
-    local invert = invert or 1
-    --average normals at each vertex
-    --first get a list of unique vertices, concatenate the x,y,z values as a key
-    local norm,unique,col= {},{},{}
-    for i=1, #vertices do
-        unique[vertices[i].x ..vertices[i].y..vertices[i].z]=vec3(0,0,0)
-    end
-    --calculate normals, add them up for each vertex and keep count
-    for i=1, #vertices,3 do --calculate normal for each set of 3 vertices
-        local n = (vertices[i+1] - vertices[i]):cross(vertices[i+2] - vertices[i]) 
-        for j=0,2 do
-            local v=vertices[i+j].x ..vertices[i+j].y..vertices[i+j].z
-            unique[v]=unique[v]+n  
-        end
-    end
-    --calculate average for each unique vertex
-    for i=1,#unique do
-        unique[i] = unique[i]:normalize() * invert
-    end
-    --now apply averages to list of vertices
-    local rnd=math.random
-    local inc = 255/#vertices
-    for i=1, #vertices,3 do --calculate average
-        local n = (vertices[i+1] - vertices[i]):cross(vertices[i+2] - vertices[i]) 
-     --   local c = color(rnd(255),rnd(255),rnd(255))
-        local c = color(inc*i, 255-(inc*i), (128+(inc*i))%255)
-        for j=0,2 do
-            norm[i+j] = unique[vertices[i+j].x ..vertices[i+j].y..vertices[i+j].z]
-            col[i+j] = c
-        end
-    end
-    return norm, col
-end
-
-function CalculateNormals(vertices)
-    --this assumes flat surfaces, and hard edges between triangles
-    local norm, origin = {}, {}
-    for i=1, #vertices,3 do --calculate normal for each set of 3 vertices
-        local n = ((vertices[i+1] - vertices[i]):cross(vertices[i+2] - vertices[i])):normalize()
-      --  local n = ((vertices[i] + vertices[i+1] + vertices[i+2])/3):normalize()
-        norm[i] = n --then apply it to all 3
-        norm[i+1] = n
-        norm[i+2] = n
-        local o = (vertices[i] + vertices[i+1] + vertices[i+2])/3
-        origin[i] = o
-        origin[i+1] = o
-        origin[i+2] = o
-    end
-    return norm, origin
-end  
-
-function Isosphere(depth)
-    local s = s or 1 --scale
-    local t = (1 + math.sqrt(5)) / 2
-    --all the vertices of an icosohedron
-    local vertices = {
-            vec3(-1 , t, 0):normalize(),
-            vec3(1 , t, 0):normalize(),
-            vec3(-1 , -t, 0):normalize(),
-            vec3(1 , -t, 0):normalize(),
-            
-            vec3(0 , -1, t):normalize(),
-            vec3(0 , 1, t):normalize(),
-            vec3(0 , -1, -t):normalize(),
-            vec3(0 , 1, -t):normalize(),
-            
-            vec3(t , 0, -1):normalize(),
-            vec3(t , 0, 1):normalize(),
-            vec3(-t , 0, -1):normalize(),
-            vec3(-t , 0, 1):normalize() 
-        }
-    --20 faces
-    icovertices = {
-            -- 5 faces around point 0
-            vertices[1], vertices[12], vertices[6],
-            vertices[1], vertices[6], vertices[2],
-            vertices[1], vertices[2], vertices[8],
-            vertices[1], vertices[8], vertices[11],
-            vertices[1], vertices[11], vertices[12],
-            
-            -- 5 adjacent faces
-            vertices[2], vertices[6], vertices[10],
-            vertices[6], vertices[12], vertices[5],
-            vertices[12], vertices[11], vertices[3],
-            vertices[11], vertices[8], vertices[7],
-            vertices[8], vertices[2], vertices[9],
-            
-            -- 5 faces around point 3
-            vertices[4], vertices[10], vertices[5],
-            vertices[4], vertices[5], vertices[3],
-            vertices[4], vertices[3], vertices[7],
-            vertices[4], vertices[7], vertices[9],
-            vertices[4], vertices[9], vertices[10],
-            
-            --5 adjacent faces
-            vertices[5], vertices[10], vertices[6],
-            vertices[3], vertices[5], vertices[12],
-            vertices[7], vertices[3], vertices[11],
-            vertices[9], vertices[7], vertices[8],
-            vertices[10], vertices[9], vertices[2]
-        }
-    
-    local finalVertices = {}
-    --divide each triangle into 4 sub triangles to make an isosphere     
-    --this can be repeated (based on depth) for higher res spheres   
-    for j=1,depth do
-        for i=1,#icovertices/3 do
-            midpoint1 = ((icovertices[i*3-2] + icovertices[i*3-1])/2):normalize() 
-            midpoint2 = ((icovertices[i*3-1] + icovertices[i*3])/2):normalize() 
-            midpoint3 = ((icovertices[i*3] + icovertices[i*3-2])/2):normalize() 
-            --triangle 1
-            table.insert(finalVertices,icovertices[i*3-2] )
-            table.insert(finalVertices,midpoint1)
-            table.insert(finalVertices,midpoint3)
-            --triangle 2
-            table.insert(finalVertices,midpoint1)
-            table.insert(finalVertices,icovertices[i*3-1] )
-            table.insert(finalVertices,midpoint2)
-            --triangle 3
-            table.insert(finalVertices,midpoint2)
-            table.insert(finalVertices,icovertices[i*3] )
-            table.insert(finalVertices,midpoint3)
-            --triangle 4
-            table.insert(finalVertices,midpoint1)
-            table.insert(finalVertices,midpoint2)
-            table.insert(finalVertices,midpoint3) 
-        end
-        icovertices = finalVertices
-        finalVertices = {}
-    end
-   
-    print("icovertices="..#icovertices)
-    return icovertices
-end
 
