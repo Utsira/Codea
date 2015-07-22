@@ -47,7 +47,8 @@ function saveToWorkingCopy()
     --encode commit message
     local commitEncode = urlencode(commitMessage)
     --build URL chain, starting from end
-    local commitURL = urlencode("working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo=Codea&path="..projectName.."&limit=999&message="..commitEncode) --to chain urls, must be double-encoded
+    local openPageURL = "working-copy://open?repo=Tests&path=README.md&mode=content"
+    local commitURL = urlencode("working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo=Codea&path="..projectName.."&limit=999&message="..commitEncode.."&x-success="..openPageURL) --to chain urls, must be double-encoded
     
     local totalURL = "working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo=Codea&path="..projectName..".lua&uti=public.txt&x-success="..commitURL
     openURL(totalURL) 
