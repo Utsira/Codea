@@ -13,8 +13,6 @@ function setup()
     parameter.text("workingCopyKey", workingCopyKey, function(v) saveLocalData("workingCopyKey", v) end)
 end
 
-
-
 --[[
 
 
@@ -33,23 +31,26 @@ end
 workingCopyKey = readLocalData("workingCopyKey", "")
 print ("Working Copy key", workingCopyKey)
 
-function saveToWorkingCopy()
-    --get project name
-    local projectName = urlencode(string.match(readProjectTab("Main"), "^%-%-%s(.-)\n") or "My Project")
-    --encode commit message
-    local commitEncode = urlencode(commitMessage)
-    --concatenate project tabs
+function saveToWorkingCopy()   
+    --concatenate project tabs in Codea "paste into project" format and place in pasteboard
     local tabNames = listProjectTabs()
     local tabString = ""
     for i,v in ipairs(tabNames) do
         tabString = tabString.."--# "..v.."\n"..readProjectTab(v).."\n\n"
         print(i,v)
     end
-    commitURL = urlencode("working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo=Codea&path="..projectName.."&limit=999&message="..commitEncode) --to chain urls, must be double-encoded
-   -- tabString = urlencode(tabString) --if passing code in URL
+    -- tabString = urlencode(tabString) --encode if passing code in URL, using &text="..tabString
     pasteboard.copy(tabString) --avoid encoding by placing code in pasteboard
-    openURL("working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo=Codea&filename="..projectName..".lua&uti=public.txt&x-success="..commitURL) -- &text="..tabString
-    -- working-copy://x-callback-url/commit/?repo=my%20repo&path=&limit=999&message=fix 
+    
+    --get project name
+    local projectName = urlencode(string.match(readProjectTab("Main"), "^%-%-%s(.-)\n") or "My Project")
+    --encode commit message
+    local commitEncode = urlencode(commitMessage)
+    --build URL chain
+    commitURL = urlencode("working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo=Codea&path="..projectName.."&limit=999&message="..commitEncode) --to chain urls, must be double-encoded
+
+    openURL("working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo=Codea&filename="..projectName..".lua&uti=public.txt&x-success="..commitURL) 
+    
     print(projectName.." saved")
 end
 
@@ -58,8 +59,10 @@ parameter.action("Push & Commit to Working Copy", saveToWorkingCopy)
 
 function urlencode(str)
     str = string.gsub (str, "\n", "\r\n")
-    str = string.gsub (str, "([^%w ])",
-    function (c) return string.format ("%%%02X", string.byte(c)) end)
+    str = string.gsub (str, "([^%w ])", 
+        function (c)
+            return string.format ("%%%02X", string.byte(c))
+        end)
     str = string.gsub (str, " ", "%%20") --"+" 
     return str
 end
