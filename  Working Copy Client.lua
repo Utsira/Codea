@@ -67,7 +67,7 @@ local function commitSingleFile()
     local commitEncode = urlencode(commitMessage)
     --build URL chain, starting from end
    -- local openPageURL = "working-copy://open?repo=Codea&path="..projectName..".lua&mode=content"
-    local commitURL = urlencode("working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo=Codea&path="..projectName.."&limit=1&message="..commitEncode.."&x-success=codea://") --to chain urls, must be double-encoded. .."&x-success="..openPageURL
+    local commitURL = urlencode("working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo=Codea&path="..projectName.."&limit=1&message="..commitEncode.."&x-success="..urlencode("codea://")) --to chain urls, must be double-encoded. .."&x-success="..openPageURL
     
     local totalURL = "working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo=Codea&path="..projectName..".lua&uti=public.txt&x-success="..commitURL --&text="..tabString..
     openURL(totalURL) 
