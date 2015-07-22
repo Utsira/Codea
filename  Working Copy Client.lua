@@ -22,18 +22,18 @@ local function commitSingleFile()
         tabString = tabString.."--# "..v.."\n"..readProjectTab(v).."\n\n"
         print(i,v)
     end
-    -- tabString = urlencode(tabString) --encode if passing code in URL, using &text="..tabString
-    pasteboard.copy(tabString) --avoid encoding by placing code in pasteboard
+    tabString = urlencode(tabString) --encode if passing code in URL, using &text="..tabString
+   -- pasteboard.copy(tabString) --avoid encoding by placing code in pasteboard
     
     --get project name
     local projectName = urlencode(string.match(readProjectTab("Main"), "^%s-%-%-%s-(.-)\n") or "My Project")
     --encode commit message
     local commitEncode = urlencode(commitMessage)
     --build URL chain, starting from end
-    local openPageURL = "working-copy://open?repo=Tests&path=README.md&mode=content"
-    local commitURL = urlencode("working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo=Codea&path="..projectName.."&limit=999&message="..commitEncode.."&x-success="..openPageURL) --to chain urls, must be double-encoded
+   -- local openPageURL = "working-copy://open?repo=Tests&path=README.md&mode=content"
+    local commitURL = urlencode("working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo=Codea&path="..projectName.."&limit=999&message="..commitEncode) --to chain urls, must be double-encoded. .."&x-success="..openPageURL
     
-    local totalURL = "working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo=Codea&path="..projectName..".lua&uti=public.txt&x-success="..commitURL
+    local totalURL = "working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo=Codea&path="..projectName..".lua&uti=public.txt&text="..tabString.."&x-success="..commitURL
     openURL(totalURL) 
     print(totalURL)
     print(projectName.." saved")
@@ -77,7 +77,6 @@ local function commitMultiFile()
     print(projectName.." saved")
 end
 
---[=[
 local function commitMultiFile()   
     --get project name
     local projectName = string.match(readProjectTab("Main"), "^%s-%-%-%s-(.-)\n") or "My Project"
@@ -112,7 +111,6 @@ local function commitMultiFile()
     print(totalURL)
     print(projectName.." saved")
 end
-  ]=]
 
 local function WorkingCopyClient()
     parameter.clear()
