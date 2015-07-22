@@ -1,134 +1,9 @@
---# WorkingCopy
--- Working Copy Client
-
-local workingCopyKey = readLocalData("workingCopyKey", "")
---print ("Working Copy key", workingCopyKey)
-
-local function urlencode(str)
-    str = string.gsub (str, "\n", "\r\n")
-    str = string.gsub (str, "([^%w ])", 
-        function (c)
-            return string.format ("%%%02X", string.byte(c))
-        end)
-    str = string.gsub (str, " ", "%%20") -- %20 encoding, not + 
-    return str
-end
-
-local function commitSingleFile()   
-    --concatenate project tabs in Codea "paste into project" format and place in pasteboard
-    local tabNames = listProjectTabs()
-    local tabString = ""
-    for i,v in ipairs(tabNames) do
-        tabString = tabString.."--# "..v.."\n"..readProjectTab(v).."\n\n"
-        print(i,v)
-    end
-    tabString = urlencode(tabString) --encode if passing code in URL, using &text="..tabString
-   -- pasteboard.copy(tabString) --avoid encoding by placing code in pasteboard
-    
-    --get project name
-    local projectName = urlencode(string.match(readProjectTab("Main"), "^%s-%-%-%s-(.-)\n") or "My Project")
-    --encode commit message
-    local commitEncode = urlencode(commitMessage)
-    --build URL chain, starting from end
-   -- local openPageURL = "working-copy://open?repo=Tests&path=README.md&mode=content"
-    local commitURL = urlencode("working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo=Codea&path="..projectName.."&limit=999&message="..commitEncode) --to chain urls, must be double-encoded. .."&x-success="..openPageURL
-    
-    local totalURL = "working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo=Codea&path="..projectName..".lua&uti=public.txt&text="..tabString.."&x-success="..commitURL
-    openURL(totalURL) 
-    print(totalURL)
-    print(projectName.." saved")
-end
-
-local function commitMultiFile()   
-    --get project name
-    local projectName = string.match(readProjectTab("Main"), "^%s-%-%-%s-(.-)\n") or "My Project"
-    projectName = urlencode(string.gsub(projectName, "%s", ""))
-    -- concatenate multiple write commands, one for each tab
-    local tabs = listProjectTabs()
-    local totalURL = ""
-    
-    for i,tabName in ipairs(tabs) do
-        local tab=readProjectTab(tabName)
-        --convert tab README to .md and place in root
-        --[==[
-        if string.find(tabName, "^README") then
-            tab=string.match(tab, "^%s-%-%-%[%[(.-)%]%]") --strip out --[[ ]]
-            tabName = tabName..".md"
-        else
-          ]==]
-            tabName = "tabs/"..tabName..".lua"
-       -- end
-             
-        local newLink = "working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo="..projectName.."&path="..tabName.."&uti=public.txt&text="..urlencode(tab).."&x-success="       
-        if i>1 then --from second link onwards, urls must be double-encoded
-            newLink = urlencode(newLink)
-        end
-        print(i,tabName)
-        totalURL = totalURL..newLink
-    end
-       
-    --add commit command
-    --encode commit message
-    local commitEncode = urlencode(commitMessage)
-    totalURL = totalURL..urlencode("working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo="..projectName.."&limit=999&message="..commitEncode) 
-        
-    openURL(totalURL) 
-    print(totalURL)
-    print(projectName.." saved")
-end
-
-local function commitMultiFile()   
-    --get project name
-    local projectName = string.match(readProjectTab("Main"), "^%s-%-%-%s-(.-)\n") or "My Project"
-    projectName = urlencode(string.gsub(projectName, "%s", ""))
-    -- concatenate multiple write commands, one for each tab
-    
-    --add commit command
-    local commitEncode = urlencode(commitMessage)
-    local totalURL = "working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo="..projectName.."&limit=999&message="..commitEncode
-    
-    local tabs = listProjectTabs()    
-    for i=#tabs,1,-1 do
-        local tabName = tabs[i]
-        local tab=readProjectTab(tabName)
-        --convert tab README to .md and place in root
-        --[==[
-        if string.find(tabName, "^README") then
-            tab=string.match(tab, "^%s-%-%-%[%[(.-)%]%]") --strip out --[[ ]]
-            tabName = tabName..".md"
-        else
-          ]==]
-            tabName = "tabs/"..tabName..".lua"
-      --  end
-             
-        local newLink = "working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo="..projectName.."&path="..tabName.."&uti=public.txt&text="..urlencode(tab).."&x-success="       
-   
-        print(i,tabName)
-        totalURL = newLink..urlencode(totalURL)
-    end
-        
-    openURL(totalURL) 
-    print(totalURL)
-    print(projectName.." saved")
-end
-
-local function WorkingCopyClient()
-    parameter.clear()
-    parameter.text("commitMessage", "")
-    parameter.action("Commit as single file", commitSingleFile)
-    parameter.action("Commit as multiple files", commitMultiFile)
-    parameter.text("workingCopyKey", workingCopyKey, function(v) saveLocalData("workingCopyKey", v) end)
-    parameter.action("Exit Working Copy Client", parameter.clear)
-end
-
-parameter.action("Working Copy client", WorkingCopyClient)
-
 --# README
 --[[
 
 # Working Copy Client
 
-A light Codea client for committing code to Working Copy, a full iOS Git client. The free version supports local Git commits only. To push to a remote host such as GitHub, BitBucket, or your own server, please buy the full gersion of Working Copy.
+A light Codea client for committing code to Working Copy, a full iOS Git client. The free version supports local Git commits only. To push to a remote host such as GitHub, BitBucket, or your own server, please buy the full version of Working Copy.
 
 ## Installation
 
@@ -155,6 +30,132 @@ A light Codea client for committing code to Working Copy, a full iOS Git client.
 [^note1]: The project name is found by looking for the "-- <project name>" string that Codea places at the top of the Main tab. Make sure you don't put anything before this in the Main tab
 
   ]]
+
+--# WorkingCopy
+-- Working Copy Client
+
+local workingCopyKey = readLocalData("workingCopyKey", "")
+--print ("Working Copy key", workingCopyKey)
+
+local function urlencode(str)
+    str = string.gsub (str, "\n", "\r\n")
+    str = string.gsub (str, "([^%w ])", 
+        function (c)
+            return string.format ("%%%02X", string.byte(c))
+        end)
+    str = string.gsub (str, " ", "%%20") -- %20 encoding, not + 
+    return str
+end
+
+local function commitSingleFile()   
+    --concatenate project tabs in Codea "paste into project" format and place in pasteboard
+    local tabs = listProjectTabs()
+    local tabString = ""
+    for i,tabName in ipairs(tabs) do
+        local tab=readProjectTab(tabName)
+
+        tabString = tabString.."--# "..tabName.."\n"..tab.."\n\n"
+        print(i,tabName)
+    end
+  --  tabString = urlencode(tabString) --encode if passing code in URL, using &text="..tabString
+    pasteboard.copy(tabString) --avoid encoding by placing code in pasteboard
+    
+    --get project name
+    local projectName = urlencode(string.match(readProjectTab("Main"), "^%s-%-%-%s-(.-)\n") or "My Project")
+    --encode commit message
+    local commitEncode = urlencode(commitMessage)
+    --build URL chain, starting from end
+    local openPageURL = "working-copy://open?repo=Codea&mode=content&path="..projectName
+    local commitURL = urlencode("working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo=Codea&path="..projectName.."&limit=1&message="..commitEncode.."&x-success="..openPageURL) --to chain urls, must be double-encoded. .."&x-success="..openPageURL
+    
+    local totalURL = "working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo=Codea&path="..projectName..".lua&uti=public.txt&x-success="..commitURL --&text="..tabString..
+    openURL(totalURL) 
+    print(totalURL)
+    print(projectName.." saved")
+end
+
+local function commitMultiFile()   
+    --get project name
+    local projectName = string.match(readProjectTab("Main"), "^%s-%-%-%s-(.-)\n") or "My Project"
+    projectName = urlencode(string.gsub(projectName, "%s", ""))
+    -- concatenate multiple write commands, one for each tab
+    local tabs = listProjectTabs()
+    local totalURL = ""
+    
+    for i,tabName in ipairs(tabs) do
+        local tab=readProjectTab(tabName)
+        --convert tab README to .md and place in root
+        
+        if string.find(tabName, "^README") then
+            tab=string.match(tab, "^%s-%-%-%[%[(.-)%]%]") --strip out --[[ ]]
+            tabName = tabName..".md"
+        else  
+            tabName = "tabs/"..tabName..".lua"
+        end
+             
+        local newLink = "working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo="..projectName.."&path="..tabName.."&uti=public.txt&text="..urlencode(tab).."&x-success="       
+        if i>1 then --from second link onwards, urls must be double-encoded
+            newLink = urlencode(newLink)
+        end
+        print(i,tabName, tab)
+        totalURL = totalURL..newLink
+    end
+       
+    --add commit command
+    --encode commit message
+    local commitEncode = urlencode(commitMessage)
+    totalURL = totalURL..urlencode("working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo="..projectName.."&limit=999&message="..commitEncode) 
+        
+    openURL(totalURL) 
+    print(totalURL)
+    print(projectName.." saved")
+end
+
+
+local function commitMultiFile()   
+    --get project name
+    local projectName = string.match(readProjectTab("Main"), "^%s-%-%-%s-(.-)\n") or "My Project"
+    projectName = urlencode(string.gsub(projectName, "%s", ""))
+    -- concatenate multiple write commands, one for each tab
+    
+    --add commit command
+    local commitEncode = urlencode(commitMessage)
+    local totalURL = "working-copy://x-callback-url/commit/?key="..workingCopyKey.."&repo="..projectName.."&limit=999&message="..commitEncode
+    
+    local tabs = listProjectTabs()    
+    for i=#tabs,1,-1 do
+        local tabName = tabs[i]
+        local tab=readProjectTab(tabName)
+        --convert tab README to .md and place in root
+        if string.find(tabName, "^README") then
+            tab=string.match(tab, "^%s-%-%-%[%[(.-)%]%]") --strip out --[[ ]]
+            tabName = tabName..".md"
+        else  
+            tabName = "tabs/"..tabName..".lua"
+        end
+             
+        local newLink = "working-copy://x-callback-url/write/?key="..workingCopyKey.."&repo="..projectName.."&path="..tabName.."&uti=public.txt&text="..urlencode(tab).."&x-success="       
+   
+        print(i,tabName, tab)
+        totalURL = newLink..urlencode(totalURL)
+    end
+        
+    openURL(totalURL) 
+    print(totalURL)
+    print(projectName.." saved")
+end
+
+
+local function WorkingCopyClient()
+    parameter.clear()
+    parameter.text("commitMessage", "")
+    parameter.action("Commit as single file", commitSingleFile)
+    parameter.action("Commit as multiple files", commitMultiFile)
+    parameter.text("workingCopyKey", workingCopyKey, function(v) saveLocalData("workingCopyKey", v) end)
+    parameter.action("Exit Working Copy Client", parameter.clear)
+end
+
+parameter.action("Working Copy client", WorkingCopyClient)
 
 --# Main
 -- Working Copy Client
