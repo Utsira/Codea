@@ -104,7 +104,7 @@ function draw()
     local cursorSpeed = 4
     local cursorLen = (ElapsedTime*cursorSpeed%2)//1 --a number that regularly alternates between 0 and 1 
     local underCursor = string.sub(lines[#lines].str, cursorPos, cursorPos) or " "
-    local cursor=string.rep("\u{258A}", cursorLen)..string.rep(underCursor, 1-cursorLen) --cursor symbol..empty cursor symbol. The empty symbol is necessary otherwise the cursor blinking will push a word past the word wrap limit if you're at the end of a line. One of the disadvantages of a text-based cursor 25ae
+    local cursor=string.rep("\u{258A}", cursorLen)..string.rep(underCursor, 1-cursorLen) --cursor symbol..under cursor. 
     
     local y = HEIGHT
     pushStyle()
@@ -115,9 +115,8 @@ function draw()
             out = beforeCursor..cursor..string.sub(afterCursor, 2) --string.insert( out, cursor, cursorPos)
         end
         local indent = string.rep("> ", v.level)
-        local w,h = textSize(indent..out)
-        y = y - h
-        
+        local _,h = textSize(indent..out)
+        y = y - h      
         text(indent..out, margin, y)
     end
     --scroll screen
@@ -138,8 +137,7 @@ end
 
 function touched(t)
     if t.state==BEGAN then
-        if t.y>typeWriter+30 and t.y<typeWriter+60 then --button / autocomplete row
-            
+        if t.y>typeWriter+30 and t.y<typeWriter+60 then --autocomplete row        
             for i,v in ipairs(auto) do
                 if t.x>v.x and t.x<v.x+v.w then
                     
@@ -151,14 +149,13 @@ function touched(t)
                     return
                 end
             end
-        elseif t.y>typeWriter and t.y<typeWriter+30 then --button
+        elseif t.y>typeWriter and t.y<typeWriter+30 then --button row
             for i,v in ipairs(buttons) do
                 if t.x>v.x and t.x<v.x+v.w then
                     v:touched()
                 end
-            end
-            
-        else --check text
+            end      
+        else --initiate cursor moving
             textTouch = {id=t.id, x=t.x, cursor=cursorPos}
         end
     elseif t.state == MOVING then
@@ -186,18 +183,18 @@ local blockStart = {"function", "if", "do", "repeat"} --terms that initiate a co
 
 function keyboard(key)
     if key == RETURN then
-        lines[#lines].str = lines[#lines].str.." " --add space to end to stand for newline (and later to start of string) to check for discrete words
+        lines[#lines].str = lines[#lines].str.." " --add space to end (and later to start of string) to make it easier to check for discrete words at beginning and end of line
         --check for block start
         for _,keyword in ipairs(blockStart) do
-            if string.match(" "..lines[#lines].str, "[^_%w]"..keyword.."[^_%w]") then --terms separated by "not an underscore or an alphanumeric"
+            if string.match(" "..lines[#lines].str, "[^_%w]"..keyword.."[^_%w]") then --Lua terms are separated by "not an underscore or an alphanumeric"
                 if level==1 then codeBlock = {} end --initiate block
                 level = level + 1
             end
         end
         --check for block end
-        if string.match(" "..lines[#lines].str, "[^_%w]end[^_%w]") or string.match(" "..lines[#lines].str, "[^_%w]until[^_%w]") then
+        if string.match(" "..lines[#lines].str, "[^_%w]end[^_%w]") or string.match(" "..lines[#lines].str, "[^_%w]until[^_%w]") then --nb doesnt attempt to match "until" to "repeat"
             level = math.max(level - 1, 1)
-            lines[#lines].level = level
+            lines[#lines].level = level --pull "end" in a level
         end
         if codeBlock then codeBlock[#codeBlock+1]=lines[#lines].str end --add to block
         --interpret
@@ -210,10 +207,10 @@ function keyboard(key)
             end
         end
         lines[#lines+1]={level=level, str=""} --newline
-        auto={}
-        moveCursor(1)
+        auto={} --clear autocomplete
+        moveCursor(1) --cursor back to column 1
     elseif key == BACKSPACE then
-        lines[#lines].str=string.sub(beforeCursor, 1, -2)..afterCursor
+        lines[#lines].str=string.sub(beforeCursor, 1, -2)..afterCursor --delete character before cursor
         moveCursor(cursorPos - 1)
         populateAutocomplete()
     else
@@ -246,11 +243,10 @@ function math.clamp(v,low,high)
     return math.min(math.max(v, low), high)
 end
 
---sandbox 
+--sandbox. Functions we dont want user to use.
 function null() end
 
 local saveTab = saveProjectTab()
-
 saveProjectTab = null
 
 --# Button
