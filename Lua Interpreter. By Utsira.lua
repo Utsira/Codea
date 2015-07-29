@@ -3,26 +3,23 @@
 oldPrint = print
 
 displayMode(FULLSCREEN_NO_BUTTONS )
---partially pull down the ios notifications screen to bring the buttons back, or hit home and relaunch Codea
+--partially pull down the ios notifications screen, or partially do a 4-finger app-switching gesture to bring the buttons back, or hit home and relaunch Codea
 
 function setup()
     orientationChanged(CurrentOrientation)
     screeny, targety =0,0
-    font("Inconsolata")
-    fill(6, 255, 0, 255)
-    fontSize(20)
-    textMode(CORNER)
+   -- font("Inconsolata")
     lines = {}
-   -- lines = {{level=1, str=""}} --indent level, string
     level = 1 --current indent level
-    cursorPos = 1
     auto={}
     buttonX = 0
-    buttons={Button"+", Button"-", Button"*", Button"/", Button"<", Button("="), Button">", Button"#", Button":", Button"\"\"", Button"()", Button"[]", }
+    setStyle()
+    buttons={Button"+", Button"-", Button"*", Button"/", Button"<", Button("="), Button">", Button"#", Button":", Button"\"\"", Button"()", Button"[]", Button"{}"}
     parameter.watch("cursorPos")
     showKeyboard()
-    print("########  LUA INTERPRETER  ########\nTap the autocomplete suggestions to complete words. \nSlide your finger anywhere else on screen to move the cursor.")
-    lines[#lines+1]={level=level, str=""}
+    print("########  LUA 5.3 INTERPRETER  ########\nTap the autocomplete suggestions to complete words. \nSlide your finger anywhere else on screen to move the cursor.")
+    lines[#lines+1]={level=level, str=""} --indent level, string
+    moveCursor(1)
 end
 
 --use local functions to prevent user overwriting them. Difficult to make it idiot-proof though
@@ -43,14 +40,15 @@ end
 
 --autocomlete
 
-local complete = {"function", "if", "do", "repeat", "return", "end", "until", "while", "for", "then", "do", "local"} --Lua commands not in _G
+local complete = {"function", "repeat", "return", "end", "until", "while", "for", "then", "local", "and", "not", "else", "elseif"} --Lua commands not in _G
 
 local function populateAutocomplete()
     pushStyle()
+    setStyle()
     fontSize(buttonSize)
     local word = string.match(" "..beforeCursor, "[^%._%w]([%w%._]+)$") --grab last letters before cursor
     -- oldPrint(word)
-       auto={}
+    auto={}
     if word then
         local x = 0
         local lib,word2
@@ -86,6 +84,13 @@ local function populateAutocomplete()
     popStyle()
 end
 
+function setStyle()
+    font("Menlo")
+    fill(6, 255, 0, 255)
+    fontSize(20)
+    textMode(CORNER)
+end
+
 function draw()
     if not isKeyboardShowing() then
         typeWriter = 0
@@ -97,14 +102,16 @@ function draw()
     --cursor
     local cursorSpeed = 4
     local cursorLen = (ElapsedTime*cursorSpeed%2)//1 --a number that regularly alternates between 0 and 1 
-  --  local underCursor = string.sub(lines[#lines].str, cursorPos, cursorPos) or "\u{25af}"
-    local cursor=string.rep("\u{25ae}", cursorLen)..string.rep("\u{25af}", 1-cursorLen) --cursor symbol..empty cursor symbol. The empty symbol is necessary otherwise the cursor blinking will push a word past the word wrap limit if you're at the end of a line. One of the disadvantages of a text-based cursor
+    local underCursor = string.sub(lines[#lines].str, cursorPos, cursorPos) or " "
+    local cursor=string.rep("\u{258A}", cursorLen)..string.rep(underCursor, 1-cursorLen) --cursor symbol..empty cursor symbol. The empty symbol is necessary otherwise the cursor blinking will push a word past the word wrap limit if you're at the end of a line. One of the disadvantages of a text-based cursor 25ae
     
     local y = HEIGHT
+    pushStyle()
+    setStyle()
     for i,v in ipairs(lines) do
         local out = v.str
         if i==#lines then
-            out = string.insert( out, cursor, cursorPos)
+            out = beforeCursor..cursor..string.sub(afterCursor, 2) --string.insert( out, cursor, cursorPos)
         end
         local indent = string.rep("> ", v.level)
         local w,h = textSize(indent..out)
@@ -113,44 +120,43 @@ function draw()
         text(indent..out, margin, y)
     end
     --scroll screen
-    targety = math.max(0, typeWriter-y) 
+    targety = math.max(0, typeWriter+40-y) 
     screeny = screeny + (targety - screeny) * 0.1 
     --buttons and autocomplete
     popMatrix()
-    pushStyle()
     fill(128,255)
     fontSize(buttonSize)
     for i,v in ipairs(buttons) do
         v:draw()
     end
     for i,v in ipairs(auto) do
-        text(v.str, buttonX+v.x, typeWriter)
+        text(v.str, v.x, typeWriter+30)
     end
     popStyle() 
 end
 
 function touched(t)
     if t.state==BEGAN then
-        if t.y>typeWriter and t.y<typeWriter+50 then --button / autocomplete row
-            if t.x >buttonX then --autocomplete
-                for i,v in ipairs(auto) do
-                    if t.x>v.x+buttonX and t.x<v.x+buttonX+v.w then
-                        
-                        local word  = string.match(beforeCursor, "(.-[^_%w]?)[%w_]*$") or ""
-               
-                        lines[#lines].str = word..v.str..afterCursor --remove partial word and add autocomplete string
-                        moveCursor( cursorPos + (string.len(word..v.str)-string.len(beforeCursor)))
-                        auto = {}
-                        return
-                    end
-                end
-            else --button
-               for i,v in ipairs(buttons) do
-                    if t.x>v.x and t.x<v.x+v.w then
-                        v:touched()
-                    end
+        if t.y>typeWriter+30 and t.y<typeWriter+60 then --button / autocomplete row
+            
+            for i,v in ipairs(auto) do
+                if t.x>v.x and t.x<v.x+v.w then
+                    
+                    local word  = string.match(beforeCursor, "(.-[^_%w]?)[%w_]*$") or ""
+                    
+                    lines[#lines].str = word..v.str..afterCursor --remove partial word and add autocomplete string
+                    moveCursor( cursorPos + (string.len(word..v.str)-string.len(beforeCursor)))
+                    auto = {}
+                    return
                 end
             end
+        elseif t.y>typeWriter and t.y<typeWriter+30 then --button
+            for i,v in ipairs(buttons) do
+                if t.x>v.x and t.x<v.x+v.w then
+                    v:touched()
+                end
+            end
+            
         else --check text
             textTouch = {id=t.id, x=t.x, cursor=cursorPos}
         end
@@ -203,7 +209,8 @@ function keyboard(key)
             end
         end
         lines[#lines+1]={level=level, str=""} --newline
-        cursorPos = 1
+        auto={}
+        moveCursor(1)
     elseif key == BACKSPACE then
         lines[#lines].str=string.sub(beforeCursor, 1, -2)..afterCursor
         moveCursor(cursorPos - 1)
@@ -219,9 +226,9 @@ function orientationChanged(o)
      margin = WIDTH * 0.1
     textWrapWidth(WIDTH - (margin*2))
     if o==PORTRAIT or o==PORTRAIT_UPSIDE_DOWN then
-        typeWriter = HEIGHT * 0.28
+        typeWriter = HEIGHT * 0.27
     else
-        typeWriter = HEIGHT * 0.48
+        typeWriter = HEIGHT * 0.47
     end
 end
 
@@ -270,5 +277,6 @@ end
 function Button:touched(touch)
     lines[#lines].str = string.insert(lines[#lines].str, self.str, cursorPos)
     moveCursor (cursorPos + 1)
+    auto={}
 end
 
